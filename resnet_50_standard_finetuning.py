@@ -1,7 +1,10 @@
 import keras
 import tensorflow as tf
+from keras import Model
 
 from keras.src.applications.resnet import ResNet50
+from keras.src.layers import GlobalAveragePooling2D, Dense
+
 from parameter_config import *
 from load_ds import load_ds
 
@@ -18,10 +21,21 @@ print("Validation dataset loaded")
 # Model setup
 input_tensor = keras.Input(shape=input_shape)
 
-model = ResNet50(weights=None, classes=classes, include_top=True, input_tensor=input_tensor, input_shape=input_shape)
-model.compile(optimizer="adam",
+base_model = ResNet50(weights="imagenet", classes=classes, include_top=False, input_tensor=input_tensor, input_shape=input_shape)
+# for layer in base_model.layers:
+#     layer.trainable = False
+base_model_ouput = base_model.output
+
+
+outputs = GlobalAveragePooling2D()(base_model_ouput)
+# Adding fully connected layer
+outputs = Dense(512, activation='relu')(outputs)
+outputs = Dense(classes, activation='softmax')(outputs)
+model = Model(inputs=base_model.input, outputs=outputs)
+model.compile(optimizer=optimizer,
               loss="sparse_categorical_crossentropy",
               metrics=['accuracy'])
+model.summary()
 
 # Training setup
 cp_callback = keras.callbacks.ModelCheckpoint(

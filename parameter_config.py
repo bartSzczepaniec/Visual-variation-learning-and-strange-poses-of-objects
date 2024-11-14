@@ -1,10 +1,17 @@
 import os
 
+from utils import get_variations_names
+
 # dataset params
 classes = 15
 img_width = 256
 img_height = 256
 class_names = ['boat', 'bus', 'car', 'equip', 'f1car', 'heli', 'mil', 'monster', 'pickup', 'plane', 'semi', 'tank', 'train', 'ufo', 'van']
+variations_names = get_variations_names()
+variations = len(variations_names) # number of all poses
+
+
+shuffle_buffer_size = 1000
 # dirs
 train_dir = "../iLab-2M/home2/toy/iLab2M/train_img"
 val_dir = "../iLab-2M/home2/toy/iLab2M/val_img"
@@ -15,4 +22,10 @@ checkpoint_dir = os.path.dirname(checkpoint_path)
 
 # training params
 batch_size = 32
-epochs = 10
+epochs = 30
+
+# model params
+# From the paper: SGD optimizer, lr=0.001, alpha=0.8, momentum=0.9, batch=16
+input_shape = (224, 224, 3)
+optimizer = "sgd"
+alpha = 0.8
