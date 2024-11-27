@@ -1,6 +1,7 @@
 import os
 
 from utils import get_variations_names
+from keras.src.optimizers import SGD
 
 # dataset params
 classes = 15
@@ -16,16 +17,19 @@ shuffle_buffer_size = 1000
 train_dir = "../iLab-2M/home2/toy/iLab2M/train_img"
 val_dir = "../iLab-2M/home2/toy/iLab2M/val_img"
 test_dir = "../iLab-2M/home2/toy/iLab2M/test_img"
+# weights path
+saved_weights_for_future_train_path = "./trainings/training_whole_f/cp-0014.weights.h5"
+saved_weights_path = "./trainings/training_whole_f/cp-0014.weights.h5"
 
 checkpoint_path = "trainings/training_1/cp-{epoch:04d}.weights.h5"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
 # training params
 batch_size = 32
-epochs = 30
+epochs = 15
 
 # model params
 # From the paper: SGD optimizer, lr=0.001, alpha=0.8, momentum=0.9, batch=16
 input_shape = (224, 224, 3)
-optimizer = "sgd"
+# optimizer = "sgd"
 alpha = 0.8

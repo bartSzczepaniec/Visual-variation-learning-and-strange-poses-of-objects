@@ -61,7 +61,7 @@ def crop_images(img, label, training):
 def load_ds(ds_dir, visualize: bool = False, training: bool = False):
     ds = load_paths_ds(ds_dir)
     # FOR TESTING - remove this line
-    ds = ds.take(1000)
+    # ds = ds.take(1000)
 
     # Slower version below
     # ds = tf.data.Dataset.list_files(str(ds_dir + '/*'), shuffle=False)
@@ -118,7 +118,7 @@ def crop_images_with_variations(img, label, label_var, training):
 def load_ds_with_variations(ds_dir, visualize: bool = False, training: bool = False):
     ds = load_paths_ds(ds_dir)
     # FOR TESTING - remove this line
-    ds = ds.take(10000)
+    # ds = ds.take(1000)
 
 
     ds = ds.map(process_path_with_variations, num_parallel_calls=tf.data.experimental.AUTOTUNE)

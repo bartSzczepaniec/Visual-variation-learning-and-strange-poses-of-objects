@@ -1,5 +1,5 @@
 from datetime import datetime
-from tabnanny import verbose
+
 
 import keras
 import tensorflow as tf
@@ -7,8 +7,10 @@ from keras import Model
 
 from keras.src.applications.resnet import ResNet50
 from keras.src.layers import GlobalAveragePooling2D, Dense
+from keras.src.optimizers import SGD
 from tensorboard import program
 
+from model import get_resnet50_var_classification
 from parameter_config import *
 from load_ds import load_ds, load_ds_with_variations
 
@@ -29,39 +31,26 @@ val_ds = load_ds_with_variations(val_dir, visualize=True)
 print("Validation dataset loaded")
 
 # Model setup
-input_tensor = keras.Input(shape=input_shape)
-
-base_model = ResNet50(weights="imagenet", classes=classes, include_top=False, input_tensor=input_tensor, input_shape=input_shape)
-# for layer in base_model.layers:
-#     layer.trainable = False
-base_model_ouput = base_model.output
-
-
-outputs = GlobalAveragePooling2D()(base_model_ouput)
-# Adding fully connected layer
-outputs = Dense(1024, activation='relu', name="fc")(outputs)
-
-outputs_standard = Dense(classes, activation='softmax', name='y_class')(outputs)
-outputs_var = Dense(variations, activation='softmax', name='y_var')(outputs)
-
-model = Model(inputs=base_model.input, outputs=[outputs_standard, outputs_var])
-model.compile(optimizer=optimizer,
+TRAIN_WHOLE_MODEL = False # if False - only the head of the model is trained
+model = get_resnet50_var_classification()
+if TRAIN_WHOLE_MODEL:
+    for layer in model.layers:
+        layer.trainable = True
+    model.load_weights(saved_weights_for_future_train_path)
+for layer in model.layers:
+    layer.trainable = True
+model.compile(optimizer=SGD(learning_rate=0.001, momentum=0.9),
               loss={'y_class': 'sparse_categorical_crossentropy', 'y_var': 'sparse_categorical_crossentropy'},
               loss_weights={'y_class': 1.0 - alpha, 'y_var': alpha},
               metrics={'y_class': 'accuracy', 'y_var': 'accuracy'})
 model.summary()
-
-# test_model = ResNet50(weights="imagenet", classes=1000, include_top=True, input_tensor=input_tensor, input_shape=input_shape)
-# test_model.summary()
-
+# input("--")
 # Training setup
 cp_callback = keras.callbacks.ModelCheckpoint(
     filepath=checkpoint_path,
     verbose=1,
     save_weights_only=True,
     monitor='val_y_class_accuracy',
-    save_best_only=True,
-    mode='auto',
     save_freq='epoch',)
 
 # Tensorboard callback
@@ -78,5 +67,11 @@ history = model.fit(train_ds,
 print(history.history.keys())
 print("CLASS accuracy:")
 print(history.history["val_y_class_accuracy"])
+print("CLASS loss:")
+print(history.history["val_y_class_loss"])
 print("VARIATION accuracy:")
 print(history.history["val_y_var_accuracy"])
+
+model.save("./saved_model/after_whole_training_model.keras")
+# reconstructed_model = keras.models.load_model("./saved_model/after_whole_training_model.keras")
+# reconstructed_model.summary()
