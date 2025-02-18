@@ -3,16 +3,13 @@ from datetime import datetime
 
 import keras
 import tensorflow as tf
-from keras import Model
-
-from keras.src.applications.resnet import ResNet50
-from keras.src.layers import GlobalAveragePooling2D, Dense
 from keras.src.optimizers import SGD
+
 from tensorboard import program
 
 from model import get_resnet50_var_classification
 from parameter_config import *
-from load_ds import load_ds, load_ds_with_variations
+from load_ds import load_ds_with_variations
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 for gpu in gpus:
@@ -44,6 +41,9 @@ model.compile(optimizer=SGD(learning_rate=0.001, momentum=0.9),
               loss_weights={'y_class': 1.0 - alpha, 'y_var': alpha},
               metrics={'y_class': 'accuracy', 'y_var': 'accuracy'})
 model.summary()
+# uncomment for continuing training after all epochs
+# model = keras.models.load_model("./saved_model/model_after_trainingfull.keras")
+
 # input("--")
 # Training setup
 cp_callback = keras.callbacks.ModelCheckpoint(
@@ -52,7 +52,11 @@ cp_callback = keras.callbacks.ModelCheckpoint(
     save_weights_only=True,
     monitor='val_y_class_accuracy',
     save_freq='epoch',)
-
+reduce_lr_callback = keras.callbacks.ReduceLROnPlateau(
+    factor=0.1,
+    patience=5,
+    verbose=1,
+    min_lr=1e-8)
 # Tensorboard callback
 logdir = os.path.join("logs", datetime.now().strftime("%Y%m%d-%H%M%S"))
 tensorboard_callback = keras.callbacks.TensorBoard(logdir, histogram_freq=1)
@@ -61,7 +65,7 @@ history = model.fit(train_ds,
           batch_size=batch_size,
           epochs=epochs,
           validation_data=val_ds,
-          callbacks=[cp_callback, tensorboard_callback],
+          callbacks=[cp_callback, tensorboard_callback, reduce_lr_callback],
           verbose=1)
 
 print(history.history.keys())

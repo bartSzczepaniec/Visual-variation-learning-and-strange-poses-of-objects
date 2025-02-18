@@ -20,6 +20,10 @@ def decode_img(img):
   img = tf.io.decode_jpeg(img, channels=3)
   return tf.image.resize(img, [img_height, img_width])
 
+def decode_img_png(img):
+  img = tf.io.decode_png(img, channels=3)
+  return tf.image.resize(img, [img_height, img_width])
+
 def process_path(file_path):
   label = get_label(file_path)
   img = tf.io.read_file(file_path)
@@ -38,9 +42,10 @@ def get_all_class_names(ds_dir):
       class_names.append(class_name)
   return class_names
 
-def configure_for_performance(ds):
+def configure_for_performance(ds, training):
   #ds = ds.cache()
-  ds = ds.shuffle(buffer_size=shuffle_buffer_size)
+  if training:
+    ds = ds.shuffle(buffer_size=shuffle_buffer_size, reshuffle_each_iteration=True)
   ds = ds.batch(batch_size)
   ds = ds.prefetch(buffer_size=AUTOTUNE)
   return ds
@@ -70,7 +75,7 @@ def load_ds(ds_dir, visualize: bool = False, training: bool = False):
     ds = ds.map(process_path, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     print("dataset loaded")
     ds = ds.map(lambda x, y: crop_images(x, y, training), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    ds = configure_for_performance(ds)
+    ds = configure_for_performance(ds, training)
     # Preprocessing for the ResNet50 model
     ds = ds.map(lambda x, y: (keras.applications.resnet50.preprocess_input(x), y), num_parallel_calls=tf.data.experimental.AUTOTUNE)
     print("dataset preprocessed")
@@ -121,12 +126,12 @@ def load_ds_with_variations(ds_dir, visualize: bool = False, training: bool = Fa
     # ds = ds.take(1000)
 
 
-    ds = ds.map(process_path_with_variations, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    ds = ds.map(process_path_with_variations, num_parallel_calls=tf.data.AUTOTUNE)
     print("dataset with variations loaded")
-    ds = ds.map(lambda x, y, y_var: crop_images_with_variations(x, y, y_var, training), num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    ds = configure_for_performance(ds)
+    ds = ds.map(lambda x, y, y_var: crop_images_with_variations(x, y, y_var, training), num_parallel_calls=tf.data.AUTOTUNE)
+    ds = configure_for_performance(ds, training)
     # Preprocessing for the ResNet50 model
-    ds = ds.map(lambda x, y, y_var: (keras.applications.resnet50.preprocess_input(x), {'y_class': y, 'y_var': y_var}), num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    ds = ds.map(lambda x, y, y_var: (keras.applications.resnet50.preprocess_input(x), {'y_class': y, 'y_var': y_var}), num_parallel_calls=tf.data.AUTOTUNE)
     print("dataset with variations preprocessed")
 
     if visualize:
