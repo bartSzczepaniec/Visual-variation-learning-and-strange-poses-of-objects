@@ -12,14 +12,14 @@ class ReduceLRBacktrack(ReduceLROnPlateau):
 
     def on_epoch_end(self, epoch, logs=None):
         current = logs.get(self.monitor)
+        old_lr = backend.get_value(self.model.optimizer.learning_rate)
         if current is None:
             logging.warning('Reduce LR on plateau conditioned on metric `%s` '
                             'which is not available. Available metrics are: %s',
                              self.monitor, ','.join(list(logs.keys())))
-        if not self.monitor_op(current, self.best): # not new best
-            if not self.in_cooldown(): # and we're not in cooldown
-                if self.wait+1 >= self.patience: # going to reduce lr
-                    # load best model so far
+        if not self.monitor_op(current, self.best):
+            if not self.in_cooldown():
+                if self.wait+1 >= self.patience:
                     print("Backtracking to best model before reducting LR")
                     self.model.load_weights(self.best_path)
 
@@ -42,7 +42,6 @@ class ReduceLRBacktrack(ReduceLROnPlateau):
             elif not self.in_cooldown():
                 self.wait += 1
                 if self.wait >= self.patience:
-                    old_lr = backend.get_value(self.model.optimizer.learning_rate)
                     if old_lr > np.float32(self.min_lr):
                         new_lr = old_lr * self.factor
                         new_lr = max(new_lr, self.min_lr)

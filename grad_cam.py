@@ -89,7 +89,6 @@ def show_grad_cam_examples(model, dataset, ds_y_type="variations", model_y_type=
         plt.subplot(3, 3, i + 1)
         heatmap = make_grad_cam_heatmap(np.expand_dims(image_batch[i], axis=0), model, pred_index=y_pred[i], model_y_type=model_y_type)
         superimposed_img = get_img_with_grad_cam(og_images[i], heatmap)
-        #plt.imshow(og_images[i].astype("uint8"))
         plt.imshow(superimposed_img)
 
         if ds_y_type == "variations":

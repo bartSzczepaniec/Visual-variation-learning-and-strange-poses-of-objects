@@ -2,20 +2,16 @@ from datetime import datetime
 
 
 import keras
-import numpy as np
 import tensorflow as tf
 from keras import Model
-from keras.src.optimizers import SGD
+from keras.src.optimizers import SGD, Adam
 
 from tensorboard import program
-from tensorflow.python.keras import backend
 
 from load_ax_ds import load_ax_ds_chosen_objects, load_ax_ds_splited
 from model import get_resnet50_var_classification
 from parameter_config import *
 from load_ds import load_ds_with_variations
-from tensorflow.python.keras.callbacks import ReduceLROnPlateau
-from tensorflow.python.platform import tf_logging as logging
 
 from reduce_lr_backtrack import ReduceLRBacktrack
 
@@ -31,6 +27,8 @@ tb.configure(argv=[None, '--logdir', "logs"])
 url = tb.launch()
 print(f"Tensorflow listening on {url}")
 
+# Set the dataset location
+ax_smaller_ds_dir = "../paper_code_strike_with_a_pose_for_win/custom_dataset_v2"
 # Loading datasets
 train_ds = None
 if FINE_TUNING_TYPE == "OBJECTS":
@@ -46,8 +44,9 @@ if FINE_TUNING_TYPE == "SPLITS":
 print("Validation dataset loaded")
 
 model = get_resnet50_var_classification()
-# Comment line below to learn from imagenet weights
-# model.load_weights(saved_weights_path)
+load_custom_weights=False
+if load_custom_weights:
+    model.load_weights("./trainings/training_whole_s/cp-0001.weights.h5")
 outputs = model.output
 layers = [layer for layer in model.layers if layer.name != "y_var"]
 train_whole_model = True
@@ -55,7 +54,7 @@ if train_whole_model:
     for layer in model.layers:
         layer.trainable = True
 model = Model(inputs=model.input, outputs=layers[-1].output)
-model.compile(optimizer=SGD(learning_rate=0.001, momentum=0.9),
+model.compile(optimizer=Adam(learning_rate=0.0001), #SGD(learning_rate=0.001, momentum=0.9), # Adam(learning_rate=0.0001)
               loss={'y_class': 'sparse_categorical_crossentropy'},
               metrics={'y_class': 'accuracy'})
 model.summary()
@@ -76,13 +75,13 @@ cp_callback = keras.callbacks.ModelCheckpoint(
 reduce_lr_callback = ReduceLRBacktrack(
     best_path=ax_checkpoint_path,
     factor=0.1,
-    patience=5,
+    patience=10,
     verbose=1,
-    min_lr=1e-8)
+    min_lr=1e-9)
 # Tensorboard callback
 logdir = os.path.join("logs", datetime.now().strftime("%Y%m%d-%H%M%S"))
 tensorboard_callback = keras.callbacks.TensorBoard(logdir, histogram_freq=1)
-epochs = 60
+epochs = 40
 history = model.fit(train_ds,
           batch_size=batch_size,
           epochs=epochs,
@@ -98,6 +97,4 @@ print(history.history["val_loss"])
 
 model.load_weights(ax_checkpoint_path)
 model.evaluate(val_ds)
-#model.save("./saved_model/after_whole_training_model.keras")
-# reconstructed_model = keras.models.load_model("./saved_model/after_whole_training_model.keras")
-# reconstructed_model.summary()
+

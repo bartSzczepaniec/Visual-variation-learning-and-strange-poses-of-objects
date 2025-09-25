@@ -1,12 +1,5 @@
 import keras
 import numpy as np
-import tensorflow as tf
-from keras import Model
-from keras.src.optimizers import SGD
-from keras.src.applications.resnet import ResNet50
-from keras.src.layers import GlobalAveragePooling2D, Dense
-from tensorboard import program
-from tensorflow.python.data import AUTOTUNE
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sn
@@ -39,7 +32,18 @@ def plot_confusion_matrix(confusion_matrix):
     plt.figure(figsize=(10, 10))
     sn.heatmap(confusion_matrix, annot=True, fmt="d", cmap="Blues", xticklabels=class_names, yticklabels=class_names)
 
-    # Add labels, title
+    plt.title("Confusion Matrix")
+    plt.xlabel("Predicted Label")
+    plt.ylabel("True Label")
+    plt.show()
+
+def plot_reduced_confusion_matrix(confusion_matrix):
+    plt.figure(figsize=(10, 10))
+    reduced_class_set = [2, 4, 9, 11, 12]
+    reduced_class_names = [class_names[i] for i in reduced_class_set]
+    confusion_matrix = confusion_matrix[np.ix_(reduced_class_set, reduced_class_set)]
+    sn.heatmap(confusion_matrix, annot=True, fmt="d", cmap="Blues", xticklabels=reduced_class_names, yticklabels=reduced_class_names)
+
     plt.title("Confusion Matrix")
     plt.xlabel("Predicted Label")
     plt.ylabel("True Label")

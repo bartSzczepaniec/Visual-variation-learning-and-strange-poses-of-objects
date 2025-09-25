@@ -34,17 +34,14 @@ if TRAIN_WHOLE_MODEL:
     for layer in model.layers:
         layer.trainable = True
     model.load_weights(saved_weights_for_future_train_path)
-for layer in model.layers:
-    layer.trainable = True
+# for layer in model.layers:
+#     layer.trainable = True
 model.compile(optimizer=SGD(learning_rate=0.001, momentum=0.9),
               loss={'y_class': 'sparse_categorical_crossentropy', 'y_var': 'sparse_categorical_crossentropy'},
               loss_weights={'y_class': 1.0 - alpha, 'y_var': alpha},
               metrics={'y_class': 'accuracy', 'y_var': 'accuracy'})
 model.summary()
-# uncomment for continuing training after all epochs
-# model = keras.models.load_model("./saved_model/model_after_trainingfull.keras")
 
-# input("--")
 # Training setup
 cp_callback = keras.callbacks.ModelCheckpoint(
     filepath=checkpoint_path,
@@ -77,5 +74,3 @@ print("VARIATION accuracy:")
 print(history.history["val_y_var_accuracy"])
 
 model.save("./saved_model/after_whole_training_model.keras")
-# reconstructed_model = keras.models.load_model("./saved_model/after_whole_training_model.keras")
-# reconstructed_model.summary()

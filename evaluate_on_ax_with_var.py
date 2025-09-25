@@ -1,34 +1,23 @@
-from datetime import datetime
-
-
-import keras
-import numpy as np
 import tensorflow as tf
 from keras import Model
 from keras.src.optimizers import SGD
-from keras.src.applications.resnet import ResNet50
-from keras.src.layers import GlobalAveragePooling2D, Dense
-from tensorboard import program
-from tensorflow.python.data import AUTOTUNE
-from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sn
+from keras.src.layers import Dense
 
-from confusion_matrix import generate_confusion_matrix, plot_confusion_matrix
-from grad_cam import reverse_resnet50_preprocessing, show_grad_cam_examples
+
+from confusion_matrix import generate_confusion_matrix, plot_confusion_matrix, plot_reduced_confusion_matrix
+from grad_cam import show_grad_cam_examples
 from load_ax_ds import load_ax_ds, load_ax_ds_splited, load_ax_chosen_objects_paths_ds, load_ax_ds_chosen_objects
 from load_ax_ds_with_var import load_ax_ds_chosen_objects_with_var
 from model import get_resnet50_var_classification
 from parameter_config import *
-from load_ds import load_ds, load_ds_with_variations, decode_img, decode_img_png
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 for gpu in gpus:
    tf.config.experimental.set_memory_growth(gpu, True)
 
-#Model setup
+# Model setup
 model = get_resnet50_var_classification()
-model.load_weights("./trainings/training_whole_s/cp-0001.weights.h5")
+# model.load_weights("./trainings/training_whole_s/cp-0001.weights.h5")
 outputs = model.output
 layers = [layer for layer in model.layers if layer.name != "y_var"]
 model = Model(inputs=model.input, outputs=layers[-1].output)
@@ -52,21 +41,23 @@ model.compile(optimizer=SGD(learning_rate=0.001, momentum=0.9),
                             'y_pitch': 0.33,
                             'y_roll': 0.33},
               metrics={'y_class': 'accuracy'})
-model.load_weights("trainings/training_objects_var/best_epoch_from_imagenet_v3.weights.h5")
+model.load_weights("trainings/training_objects_var/best_epoch_dataset_v3_run2.weights.h5")
 model.summary()
 
-evaluate_model_accuracy = True
-evaluate_confusion_matrix = False
+# Set the booleans to evaluate the model in a specific way
+evaluate_model_accuracy = False
+evaluate_confusion_matrix = True
 visualize_grad_cam = False
-
+ax_dir = "../paper_code_strike_with_a_pose_for_win/custom_dataset_v3"
 chosen_objects_ds = load_ax_ds_chosen_objects_with_var(ax_dir, 2, visualize=True, training=False)
 if evaluate_model_accuracy:
     model.evaluate(chosen_objects_ds, batch_size=batch_size)
 if evaluate_confusion_matrix:
     confusion_matrix = generate_confusion_matrix(model, chosen_objects_ds, ds_y_type="variations", model_y_type="variations")
     plot_confusion_matrix(confusion_matrix)
+    plot_reduced_confusion_matrix(confusion_matrix)
 if visualize_grad_cam:
-    chosen_objects_ds = chosen_objects_ds.shuffle(buffer_size=shuffle_buffer_size, seed=0)
+    chosen_objects_ds = chosen_objects_ds.shuffle(buffer_size=100, seed=3)
     for i in range(3):
         show_grad_cam_examples(model, chosen_objects_ds, ds_y_type="variations", model_y_type="variations")
 

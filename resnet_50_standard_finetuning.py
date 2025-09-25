@@ -32,7 +32,7 @@ outputs = GlobalAveragePooling2D()(base_model_ouput)
 outputs = Dense(512, activation='relu')(outputs)
 outputs = Dense(classes, activation='softmax')(outputs)
 model = Model(inputs=base_model.input, outputs=outputs)
-model.compile(optimizer=optimizer,
+model.compile(optimizer="sgd",
               loss="sparse_categorical_crossentropy",
               metrics=['accuracy'])
 model.summary()

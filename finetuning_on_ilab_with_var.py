@@ -1,16 +1,18 @@
 from datetime import datetime
+
 import keras
 import tensorflow as tf
 from keras import Model
-from keras.src.optimizers import SGD, Adam
+from keras.src.optimizers import SGD
 from keras.src.layers import Dense
 
 from tensorboard import program
 
+from load_ax_ds import load_ax_ds_chosen_objects, load_ax_ds_splited
 from load_ax_ds_with_var import load_ax_ds_chosen_objects_with_var
 from model import get_resnet50_var_classification
 from parameter_config import *
-from load_ds import load_ds_with_variations
+from load_ds import load_ds_with_variations, load_ds_with_variations_regr
 
 
 from reduce_lr_backtrack import ReduceLRBacktrack
@@ -25,10 +27,11 @@ tb.configure(argv=[None, '--logdir', "logs"])
 url = tb.launch()
 print(f"Tensorflow listening on {url}")
 
-# Set the dataset location
-ax_smaller_ds_dir = "../paper_code_strike_with_a_pose_for_win/custom_dataset_v3"
-train_ds = load_ax_ds_chosen_objects_with_var(ax_dir, 1, visualize=True, training=True)
-val_ds = load_ax_ds_chosen_objects_with_var(ax_dir, 2, visualize=True, training=False)
+# Loading datasets
+train_ds = load_ds_with_variations_regr(train_dir, visualize=True, training=True)
+print("Training dataset loaded")
+val_ds = load_ds_with_variations_regr(val_dir, visualize=True)
+print("Validation dataset loaded")
 
 model = get_resnet50_var_classification()
 load_custom_weights=False
@@ -44,25 +47,21 @@ if train_whole:
         layer.trainable = True
 
 last_fc_layer = model.get_layer("fc").output
-yaw_output = Dense(1, name="y_yaw")(last_fc_layer)
-pitch_output = Dense(1, name="y_pitch")(last_fc_layer)
-roll_output = Dense(1, name="y_roll")(last_fc_layer)
-
+elevation_output = Dense(1, name="y_roll")(last_fc_layer)
+azimuth_output = Dense(1, name="y_yaw")(last_fc_layer)
 # Updating the model to include the new regression output layer
-model = Model(inputs=model.input, outputs=[layers[-1].output, yaw_output, pitch_output, roll_output])
-model.compile(optimizer=Adam(learning_rate=0.0001), # SGD(learning_rate=0.001, momentum=0.9), # Adam(learning_rate=0.0001)
+model = Model(inputs=model.input, outputs=[layers[-1].output, elevation_output, azimuth_output])
+model.compile(optimizer=SGD(learning_rate=0.001, momentum=0.9),
               loss={'y_class': 'sparse_categorical_crossentropy',
-                    'y_yaw': 'mean_squared_error',
-                    'y_pitch': 'mean_squared_error',
-                    'y_roll': 'mean_squared_error'},
+                    'y_roll': 'mean_squared_error',
+                    'y_yaw': 'mean_squared_error'},
               loss_weights={'y_class': 1.0,
-                            'y_yaw': 0.33,
-                            'y_pitch': 0.33,
-                            'y_roll': 0.33},
+                            'y_roll': 0.5,
+                            'y_yaw': 0.5},
               metrics={'y_class': 'accuracy'})
 model.summary()
 
-ax_checkpoint_path = "trainings/training_objects_var/best_epoch.weights.h5"
+ax_checkpoint_path = "trainings/training_ilab_regression/best_epoch.weights.h5"
 cp_callback = keras.callbacks.ModelCheckpoint(
     filepath=ax_checkpoint_path,
     verbose=1,
@@ -75,11 +74,11 @@ reduce_lr_callback = ReduceLRBacktrack(
     factor=0.1,
     patience=10,
     verbose=1,
-    min_lr=1e-9)
+    min_lr=1e-8)
 # Tensorboard callback
 logdir = os.path.join("logs", datetime.now().strftime("%Y%m%d-%H%M%S"))
 tensorboard_callback = keras.callbacks.TensorBoard(logdir, histogram_freq=1)
-epochs = 40
+epochs = 20
 history = model.fit(train_ds,
           batch_size=batch_size,
           epochs=epochs,

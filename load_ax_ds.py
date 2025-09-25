@@ -115,7 +115,8 @@ def load_ax_ds_chosen_objects(ds_dir, object_number, visualize: bool = False, tr
             plt.imshow(image_batch[i].numpy().astype("uint8"))
             label = label_batch["y_class"][i]
             label_var = label_batch["y_var"][i]
-            plt.title(class_names[label] + "-" + variations_names[label_var])
+            #plt.title(class_names[label] + "-" + variations_names[label_var])
+            plt.title(class_names[label])
             plt.axis("off")
         plt.show()
     return ds

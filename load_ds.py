@@ -65,12 +65,6 @@ def crop_images(img, label, training):
 
 def load_ds(ds_dir, visualize: bool = False, training: bool = False):
     ds = load_paths_ds(ds_dir)
-    # FOR TESTING - remove this line
-    # ds = ds.take(1000)
-
-    # Slower version below
-    # ds = tf.data.Dataset.list_files(str(ds_dir + '/*'), shuffle=False)
-    # print("dataset files listed")
 
     ds = ds.map(process_path, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     print("dataset loaded")
@@ -103,8 +97,7 @@ def get_labels(file_path):
     var_name = tf.strings.join([file_name_parts[-4], file_name_parts[-3], file_name_parts[-2], file_name_parts[-1]], separator="-")
     one_hot = class_name == class_names
     one_hot_var = var_name == variations_names
-    # tf.print(tf.argmax(one_hot_var))
-    # Encoding label in one hot encoding way
+
     return tf.argmax(one_hot), tf.argmax(one_hot_var)
 
 def process_path_with_variations(file_path):
@@ -122,9 +115,6 @@ def crop_images_with_variations(img, label, label_var, training):
 
 def load_ds_with_variations(ds_dir, visualize: bool = False, training: bool = False):
     ds = load_paths_ds(ds_dir)
-    # FOR TESTING - remove this line
-    # ds = ds.take(1000)
-
 
     ds = ds.map(process_path_with_variations, num_parallel_calls=tf.data.AUTOTUNE)
     print("dataset with variations loaded")
@@ -144,6 +134,67 @@ def load_ds_with_variations(ds_dir, visualize: bool = False, training: bool = Fa
             label = label_batch["y_class"][i]
             label_var = label_batch["y_var"][i]
             plt.title(class_names[label] + "-" + variations_names[label_var])
+            plt.axis("off")
+        plt.show()
+    return ds
+
+MAX_ELEVATION_NUMBER = 9
+def get_labels_for_regression(file_path):
+    path_parts = tf.strings.split(file_path, os.path.sep)
+    file_name = path_parts[-1]
+    file_name_parts = tf.strings.split(file_name, ".")
+    file_name_parts = tf.strings.split(file_name_parts[0], "-")
+    class_name = file_name_parts[0]
+    var_name = tf.strings.join([file_name_parts[-4], file_name_parts[-3], file_name_parts[-2], file_name_parts[-1]], separator="-")
+
+    elevation = tf.strings.to_number(tf.strings.substr(file_name_parts[-4], 1, -1), out_type=tf.float32)
+    azimuth = tf.strings.to_number(tf.strings.substr(file_name_parts[-3], 1, -1), out_type=tf.float32) * 20
+    if elevation >= 7:
+        azimuth += 180
+        elevation = MAX_ELEVATION_NUMBER - elevation
+    elevation = (elevation + 2) * 15
+    elevation = tf.experimental.numpy.deg2rad(elevation)
+    azimuth = tf.experimental.numpy.deg2rad(azimuth)
+
+    one_hot = class_name == class_names
+
+    return tf.argmax(one_hot), elevation, azimuth
+
+def process_path_with_variations_regr(file_path):
+  label, label_elevation, label_azimuth= get_labels_for_regression(file_path)
+  img = tf.io.read_file(file_path)
+  img = decode_img(img)
+  return img, label, label_elevation, label_azimuth
+
+def crop_images_with_variations_regr(img, label, label_elevation, label_azimuth, training):
+    if training:
+        img = tf.image.random_crop(img, size=input_shape)  # Randomly crop to 224x224
+    else:
+        img = tf.image.central_crop(img, central_fraction=0.875)
+    return img, label, label_elevation, label_azimuth
+
+def load_ds_with_variations_regr(ds_dir, visualize: bool = False, training: bool = False):
+    ds = load_paths_ds(ds_dir)
+
+    ds = ds.map(process_path_with_variations_regr, num_parallel_calls=tf.data.AUTOTUNE)
+    print("dataset with variations loaded")
+    ds = ds.map(lambda x, y, y_elevation, y_azimuth: crop_images_with_variations_regr(x, y, y_elevation, y_azimuth, training), num_parallel_calls=tf.data.AUTOTUNE)
+    ds = configure_for_performance(ds, training)
+    # Preprocessing for the ResNet50 model
+    ds = ds.map(lambda x, y, y_elevation, y_azimuth: (keras.applications.resnet50.preprocess_input(x), {'y_class': y, 'y_roll': y_elevation, 'y_yaw': y_azimuth}), num_parallel_calls=tf.data.AUTOTUNE)
+    print("dataset with variations preprocessed")
+
+    if visualize:
+        image_batch, label_batch = next(iter(ds))
+        # exemplary data in batch visualisation
+        plt.figure(figsize=(10, 10))
+        for i in range(9):
+            plt.subplot(3, 3, i + 1)
+            plt.imshow(image_batch[i].numpy().astype("uint8"))
+            label = label_batch["y_class"][i]
+            label_elevation = label_batch["y_roll"][i]
+            label_azimuth = label_batch["y_yaw"][i]
+            plt.title(class_names[label] + "\n-E:" + str(label_elevation.numpy()) + "\n-A:" + str(label_azimuth.numpy()))
             plt.axis("off")
         plt.show()
     return ds
