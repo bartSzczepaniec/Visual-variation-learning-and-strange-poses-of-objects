@@ -1,6 +1,6 @@
 # Visual-variation-learning-and-strange-poses-of-objects
 ## My master's thesis project
-The main goal of the project was to test how the method presented in [Strike (with) a Pose: Neural Networks Are Easily Fooled by Strange Poses of Familiar Objects](https://doi.org/10.48550/arXiv.1811.11553) paper will handle data specifically prepared to mislead current classifiers.
+The main goal of the project was to test how the method presented in [Learning visual variation for object recognition](https://doi.org/10.1016/j.imavis.2020.103912) paper will handle data specifically prepared to mislead current classifiers.
 
 During the project, in some of the experiments the method was slightly modified and the auxiliary task was changed from classification to regression.
 
